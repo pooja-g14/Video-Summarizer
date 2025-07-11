@@ -1,0 +1,13 @@
+openai-whisper
+moviepy
+torch
+numpy
+soundfile
+librosa
+fastapi
+uvicorn
+python-multipart
+sqlalchemy
+psycopg2-binary
+python-dotenv
+transformers

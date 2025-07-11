@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Transcript Generator and Summarizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .upload-section {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .primary-btn {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .secondary-btn {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        .clear-btn {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .output-container {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .output-section {
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: white;
+        }
+
+        .output-section h2 {
+            margin-top: 0;
+            position: sticky;
+            top: 0;
+            background-color: white;
+            padding: 10px 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        #loading {
+            display: none;
+            text-align: center;
+            color: #666;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-align:center;">Video Transcript Generator and Summarizer</h1>
+        
+        <div class="upload-section">
+            <input type="file" id="videoFile" accept="video/*">
+            <p>Supported formats: MP4, AVI, MOV, MKV</p>
+            <p>(Click on the 'Upload Video' button after uploading your video)</p>
+        </div>
+
+        <div class="buttons">
+            <button id="uploadBtn" class="primary-btn">Upload Video</button>
+            <button id="transcriptBtn" class="secondary-btn" disabled>Generate Transcript</button>
+            <button id="summaryBtn" class="secondary-btn" disabled>Generate Summary</button>
+            <button id="clearBtn" class="clear-btn">Clear All</button>
+        </div>
+
+        <div id="loading">Processing, please wait...</div>
+
+
+        <div class="output-container">
+            <div id="transcriptSection" class="output-section hidden">
+                <h2>Transcript</h2>
+                <div id="transcriptContent"></div>
+            </div>
+
+            <div id="summarySection" class="output-section hidden">
+                <h2>Summary</h2>
+                <div id="summaryContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const videoFile = document.getElementById('videoFile');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const transcriptBtn = document.getElementById('transcriptBtn');
+        const summaryBtn = document.getElementById('summaryBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const loading = document.getElementById('loading');
+        const transcriptSection = document.getElementById('transcriptSection');
+        const summarySection = document.getElementById('summarySection');
+        const transcriptContent = document.getElementById('transcriptContent');
+        const summaryContent = document.getElementById('summaryContent');
+
+        let currentVideoId = null;
+
+        uploadBtn.addEventListener('click', async () => {
+            if (!videoFile.files[0]) {
+                alert('Please select a video file first!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('video', videoFile.files[0]);
+
+            loading.style.display = 'block';
+            uploadBtn.disabled = true;
+
+            try {
+                const response = await fetch('http://localhost:8000/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.video_id) {
+                    currentVideoId = data.video_id;
+                    transcriptBtn.disabled = false;
+                    summaryBtn.disabled = false;
+                    alert('Video uploaded successfully!');
+                }
+            } catch (error) {
+                alert('Error uploading video: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+                uploadBtn.disabled = false;
+            }
+        });
+
+        transcriptBtn.addEventListener('click', async () => {
+            if (!currentVideoId) return;
+
+            loading.style.display = 'block';
+            try {
+                const response = await fetch(`http://localhost:8000/process_transcript/${currentVideoId}`, {
+                method: 'POST'});
+                const data = await response.json();
+                transcriptContent.textContent = data.transcript;
+                transcriptSection.classList.remove('hidden');
+            } catch (error) {
+                alert('Error getting transcript: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+
+        summaryBtn.addEventListener('click', async () => {
+            if (!currentVideoId) return;
+
+            loading.style.display = 'block';
+            try {
+                const response = await fetch(`http://localhost:8000/process_summary/${currentVideoId}`, {
+                method: 'POST'});
+                const data = await response.json();
+                
+                summaryContent.textContent = data.summary;
+                summarySection.classList.remove('hidden');
+            } catch (error) {
+                alert('Error getting summary: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            videoFile.value = '';
+            currentVideoId = null;
+            transcriptBtn.disabled = true;
+            summaryBtn.disabled = true;
+            transcriptSection.classList.add('hidden');
+            summarySection.classList.add('hidden');
+            transcriptContent.textContent = '';
+            summaryContent.textContent = '';
+        });
+    </script>
+</div>
+</body>
+</html>
