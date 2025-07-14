@@ -45,7 +45,7 @@ def process_audio(input_audio_path, whisper_model, vad_model, get_speech_timesta
             fp16=torch.cuda.is_available(),
             verbose=False,
             beam_size=3,
-            initial_prompt="The audio is a classroom lecture, transcribe the main speaker accurately."
+            initial_prompt="Transcribe the main speaker accurately."
         )
         return transcription_result["text"]
     except Exception as e:
@@ -54,12 +54,19 @@ def process_audio(input_audio_path, whisper_model, vad_model, get_speech_timesta
         traceback.print_exc()
         return None
 
-def summarize_text(text, summarizer):
+def summarize_text(text, summarizer, summary_type='short'):
     try:
-        print("Generating summary...")
+        print(f"Generating {summary_type} summary...")
+        
+        prompts = {
+            'short': "Provide a very concise one-paragraph summary of the following text",
+            'detailed': "Provide a detailed multi-paragraph summary of the following text",
+            'bullets': "Summarize the following text in bullet points, highlighting key information"
+        }
+        
         messages = [
-            {"role": "system", "content": "You are an AI that provides concise paragraph summaries."},
-            {"role": "user", "content": f"Summarize the following text into a paragraph: {text}"}
+            {"role": "system", "content": "You are an AI that provides summaries in different formats."}, 
+            {"role": "user", "content": f"{prompts[summary_type]}: {text}"}
         ]
 
         response = summarizer(
@@ -68,9 +75,7 @@ def summarize_text(text, summarizer):
             do_sample=True
         )
 
-        summary_text = response[0].get('generated_text', "No summary generated.")
-        print("Summary generated successfully.")
-        return summary_text
+        return response[0].get('generated_text', "No summary generated.")
 
     except Exception as e:
         print(f"Error during summarization: {e}")
@@ -102,6 +107,10 @@ def process_video_for_transcript(video_path):
                 os.remove(f)
                 print(f"🗑️ Removed intermediate file: {f}")
 
+        if os.path.exists(video_path) and os.path.isfile(video_path):
+            os.remove(video_path)
+            print(f"🗑️ Removed intermediate file: {video_path}")
+
         print("✅ Transcript generation complete.")
         return transcript_text
 
@@ -111,7 +120,7 @@ def process_video_for_transcript(video_path):
         traceback.print_exc()
         return None
 
-def generate_summary_from_transcript(transcript_text):
+def generate_summary_from_transcript(transcript_text, summary_type):
     try:
         print("📝 Generating summary from transcript...")
         
@@ -119,7 +128,7 @@ def generate_summary_from_transcript(transcript_text):
         summarizer = load_summarization_model()
 
         # Generate summary
-        summary = summarize_text(transcript_text, summarizer) if transcript_text else None
+        summary = summarize_text(transcript_text, summarizer, summary_type) if transcript_text else None
 
         print("✅ Summary generation complete.")
         return summary
