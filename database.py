@@ -23,7 +23,9 @@ class Video(Base):
     id = Column(Integer, primary_key=True, index=True)
     filename = Column(String, unique=False, index=True)
     transcript = Column(Text)
-    summary = Column(Text, nullable=True)
+    summary_short = Column(Text, nullable=True)
+    summary_detailed = Column(Text, nullable=True)
+    summary_bullets = Column(Text, nullable=True)
 
 # Create all tables
 Base.metadata.create_all(bind=engine)
