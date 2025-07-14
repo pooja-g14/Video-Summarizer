@@ -41,19 +41,31 @@ async def upload_file(video: UploadFile = File(...), db: Session = Depends(get_d
         raise HTTPException(status_code=400, detail="No video file provided")
     if not allowed_file(video.filename):
         raise HTTPException(status_code=400, detail="File type not allowed")
+
+    video_path = os.path.join(UPLOAD_FOLDER, video.filename)
     try:
-        video_path = os.path.join(UPLOAD_FOLDER, video.filename)
         with open(video_path, "wb") as buffer:
             content = await video.read()
             buffer.write(content)
-        # Save to database without processing
-        db_video = Video(filename=video.filename, transcript=None, summary=None)
+
+        # Save to database with all summary fields as None initially
+        db_video = Video(
+            filename=video.filename,
+            transcript=None,
+            summary_short=None,
+            summary_detailed=None,
+            summary_bullets=None
+        )
         db.add(db_video)
         db.commit()
         db.refresh(db_video)
+
         return {"message": "Video uploaded successfully", "video_id": db_video.id}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        db.rollback()
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 @app.get("/transcripts/{video_id}",
     summary="Get a transcript and summary by video ID",
@@ -66,7 +78,9 @@ async def get_transcript(video_id: int, db: Session = Depends(get_db)):
     return JSONResponse(content={
         'filename': video.filename,
         'transcript': video.transcript,
-        'summary': video.summary
+        'summary_short': video.summary_short,
+        'summary_detailed': video.summary_detailed,
+        'summary_bullets': video.summary_bullets
     })
 
 @app.get("/videos",
@@ -80,32 +94,12 @@ async def list_videos(db: Session = Depends(get_db)):
                 'id': video.id,
                 'filename': video.filename,
                 'transcript': video.transcript,
-                'summary': video.summary
+                'summary_short': video.summary_short,
+                'summary_detailed': video.summary_detailed,
+                'summary_bullets': video.summary_bullets
             } for video in videos
         ]
     })
-
-@app.get("/summaries/{video_id}",
-    summary="Get summary by video ID",
-    response_description="Returns the summary only")
-async def get_summary(video_id: int, db: Session = Depends(get_db)):
-    video = db.query(Video).filter(Video.id == video_id).first()
-    if not video:
-        raise HTTPException(status_code=404, detail="Video not found")
-    if not video.summary:
-        raise HTTPException(status_code=404, detail="No summary available for this video")
-    
-    return JSONResponse(content={
-        'filename': video.filename,
-        'summary': video.summary
-    })
-
-# Mount static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-@app.get("/", response_class=FileResponse)
-async def read_root():
-    return "index.html"
 
 @app.post("/process_transcript/{video_id}")
 async def process_transcript(video_id: int, db: Session = Depends(get_db)):
@@ -121,18 +115,31 @@ async def process_transcript(video_id: int, db: Session = Depends(get_db)):
     return {"transcript": transcript}
 
 @app.post("/process_summary/{video_id}")
-async def process_summary(video_id: int, db: Session = Depends(get_db)):
+async def process_summary(video_id: int, summary_type: str = "short", db: Session = Depends(get_db)):
     video = db.query(Video).filter(Video.id == video_id).first()
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
     if not video.transcript:
         raise HTTPException(status_code=400, detail="Transcript not available. Generate transcript first.")
-    summary = generate_summary_from_transcript(video.transcript)
+    
+    summary = generate_summary_from_transcript(video.transcript, summary_type)
     if summary is None:
         raise HTTPException(status_code=500, detail="Failed to generate summary")
-    video.summary = summary
+    
+    # Update the appropriate summary field based on type
+    if summary_type == "short":
+        video.summary_short = summary
+    elif summary_type == "detailed":
+        video.summary_detailed = summary
+    elif summary_type == "bullets":
+        video.summary_bullets = summary
+    
     db.commit()
     return {"summary": summary}
+
+@app.get("/", response_class=FileResponse)
+async def read_root():
+    return "index.html"
 
 if __name__ == '__main__':
     import uvicorn
