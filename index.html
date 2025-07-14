@@ -94,6 +94,19 @@
             text-align: center;
             color: #666;
         }
+        .summary-select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            margin-left: 10px;
+        }
+
+        .summary-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
 
         .hidden {
             display: none;
@@ -125,6 +138,16 @@
                 <h2>Transcript</h2>
                 <div id="transcriptContent"></div>
             </div>
+
+            <div class="summary-controls" style="margin: 20px 0;">
+                <label>Summary Type:</label>
+                <select id="summaryType" class="summary-select">
+                    <option value="short">Short Paragraph</option>
+                    <option value="detailed">Detailed Paragraph</option>
+                    <option value="bullets">Bullet Points</option>
+                </select>
+            </div>
+
 
             <div id="summarySection" class="output-section hidden">
                 <h2>Summary</h2>
@@ -200,16 +223,31 @@
         summaryBtn.addEventListener('click', async () => {
             if (!currentVideoId) return;
 
+            const summaryType = document.getElementById('summaryType').value;
             loading.style.display = 'block';
+            
             try {
-                const response = await fetch(`http://localhost:8000/process_summary/${currentVideoId}`, {
-                method: 'POST'});
+                const response = await fetch(`http://localhost:8000/process_summary/${currentVideoId}?summary_type=${summaryType}`, {
+                    method: 'POST'
+                });
                 const data = await response.json();
                 
+                // Format bullets if needed
+                // if (summaryType === 'bullets' && data.summary) {
+                //     const bulletPoints = data.summary
+                //         .split('\n')
+                //         .filter(line => line.trim())
+                //         .map(line => line.trim().startsWith('-') ? line : `- ${line}`)
+                //         .join('<br>');
+                //     summaryContent.innerHTML = bulletPoints;
+                // } else {
+                //     summaryContent.innerHTML = data.summary.replace(/\n/g, '<br>');
+                // }
+                summaryContent.innerHTML = data.summary.replace(/\n/g, '<br>');
                 summaryContent.textContent = data.summary;
                 summarySection.classList.remove('hidden');
             } catch (error) {
-                alert('Error getting summary: ' + error.message);
+                alert('Error generating summary: ' + error.message);
             } finally {
                 loading.style.display = 'none';
             }
@@ -217,13 +255,13 @@
 
         clearBtn.addEventListener('click', () => {
             videoFile.value = '';
+            transcriptContent.textContent = '';
+            summaryContent.textContent = '';
+            transcriptSection.classList.add('hidden');
+            summarySection.classList.add('hidden');
             currentVideoId = null;
             transcriptBtn.disabled = true;
             summaryBtn.disabled = true;
-            transcriptSection.classList.add('hidden');
-            summarySection.classList.add('hidden');
-            transcriptContent.textContent = '';
-            summaryContent.textContent = '';
         });
     </script>
 </div>
