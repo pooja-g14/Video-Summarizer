@@ -26,10 +26,10 @@ def load_transcription_models():
 
 def load_summarization_model():
     # Load Llama model for summarization
-    print("Loading Llama model...")
+    print("Loading summariser model...")
     model_name = "meta-llama/Llama-3.2-1B-Instruct"
-    llama_model = AutoModelForCausalLM.from_pretrained(model_name, token=access_token)
-    llama_tokenizer = AutoTokenizer.from_pretrained(model_name, token=access_token)
-    summarizer = pipeline("text-generation", model=llama_model, tokenizer=llama_tokenizer, device_map="auto", return_full_text=False)
-    print("Llama model loaded.")
+    model = AutoModelForCausalLM.from_pretrained(model_name, token=access_token)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, token=access_token)
+    summarizer = pipeline("text-generation", model=model, tokenizer=tokenizer, device_map="auto", return_full_text=False)
+    print("summariser model loaded.")
     return summarizer
