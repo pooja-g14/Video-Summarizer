@@ -32,7 +32,7 @@ def process_audio(input_audio_path, whisper_model, vad_model, get_speech_timesta
             merged_segments_buffered.append((current_start, current_end))
         non_silent_audio = np.concatenate([audio[start:end] for start, end in merged_segments_buffered] +
                                           [np.zeros(int(0.15 * sr))] * len(merged_segments_buffered[:-1]))
-        processed_audio_path = os.path.join('outputs', "temp_audio_processed.wav")
+        processed_audio_path = "temp_audio_processed.wav"
         sf.write(processed_audio_path, non_silent_audio, sr)
         print(f"Silence removed. Processed audio saved to: {processed_audio_path}")
         print(f"Reduced audio length: Original: {len(audio)/sr:.1f}s → New: {len(non_silent_audio)/sr:.1f}s")
@@ -75,7 +75,7 @@ def summarize_text(text, summarizer, summary_type='short'):
             do_sample=True
         )
 
-        return response[0].get('generated_text', "No summary generated.")
+        return response[0].get('generated_text', "No summary generated.") #for llama
 
     except Exception as e:
         print(f"Error during summarization: {e}")
@@ -93,7 +93,7 @@ def process_video_for_transcript(video_path):
         # Extract Audio
         print("🔊 Extracting audio...")
         clip = VideoFileClip(video_path)
-        audio_path = os.path.join('outputs', "temp_audio.wav")
+        audio_path = "temp_audio.wav"
         clip.audio.write_audiofile(audio_path, logger=None)
         clip.close()
         print(f"🎵 Audio saved to: {audio_path}")
@@ -102,7 +102,7 @@ def process_video_for_transcript(video_path):
         transcript_text = process_audio(audio_path, whisper_model, vad_model, get_speech_timestamps)
 
         # Cleanup
-        for f in [audio_path, os.path.join('outputs', "temp_audio_processed.wav")]:
+        for f in [audio_path, "temp_audio_processed.wav"]:
             if os.path.exists(f):
                 os.remove(f)
                 print(f"🗑️ Removed intermediate file: {f}")
