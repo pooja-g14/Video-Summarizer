@@ -1,8 +1,5 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
 from fastapi.responses import JSONResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-from pathlib import Path
-import os
 from main import process_video_for_transcript, generate_summary_from_transcript
 from sqlalchemy.orm import Session
 from database import get_db, Video
@@ -22,15 +19,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# Configure upload folder
-UPLOAD_FOLDER = 'uploads'
-OUTPUT_FOLDER = 'outputs'
 ALLOWED_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv'}
-
-# Create necessary directories
-Path(UPLOAD_FOLDER).mkdir(exist_ok=True)
-Path(OUTPUT_FOLDER).mkdir(exist_ok=True)
 
 def allowed_file(filename: str) -> bool:
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -42,7 +31,7 @@ async def upload_file(video: UploadFile = File(...), db: Session = Depends(get_d
     if not allowed_file(video.filename):
         raise HTTPException(status_code=400, detail="File type not allowed")
 
-    video_path = os.path.join(UPLOAD_FOLDER, video.filename)
+    video_path = video.filename
     try:
         with open(video_path, "wb") as buffer:
             content = await video.read()
@@ -106,7 +95,7 @@ async def process_transcript(video_id: int, db: Session = Depends(get_db)):
     video = db.query(Video).filter(Video.id == video_id).first()
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
-    video_path = os.path.join(UPLOAD_FOLDER, video.filename)
+    video_path = video.filename
     transcript = process_video_for_transcript(video_path)
     if transcript is None:
         raise HTTPException(status_code=500, detail="Failed to generate transcript")
