@@ -3,7 +3,7 @@
 Upload a video file and generate a transcript and summary for it.
 
 Tech Stack:
-- LLMs for transcript generation and summary generation (Whisper for text-to-speech and LLaMA for text summarization)
+- LLMs for transcript generation and summary generation (Whisper for speech-to-text and LLaMA for text summarization)
 - Fast API as the interface
 - PostgreSQL as the backend for storing data
 - HTML and CSS as frontend for design
